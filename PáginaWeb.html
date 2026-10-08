@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VGC Hub</title>
+  <style>
+    :root {
+      --fondo: #14182b;
+      --panel: #1f2540;
+      --texto: #eef0f8;
+      --suave: #9aa3c7;
+      --acento: #ffcb05;
+      --borde: #323a63;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: var(--fondo);
+      color: var(--texto);
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+    a:focus-visible, button:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; }
+
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px;
+      padding: 16px 24px; border-bottom: 1px solid var(--borde);
+    }
+    .logo { font-weight: 800; font-size: 1.3rem; color: var(--acento); }
+    nav { display: flex; gap: 20px; }
+    nav a { color: var(--suave); }
+    nav a:hover { color: var(--texto); }
+
+    main { max-width: 960px; margin: 0 auto; padding: 24px; }
+    .hero { padding: 56px 0 40px; }
+    .hero h1 { font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.1; max-width: 16ch; }
+    .hero p { color: var(--suave); margin-top: 16px; max-width: 55ch; }
+    .boton {
+      display: inline-block; margin-top: 24px; padding: 12px 22px;
+      background: var(--acento); color: #14182b; font-weight: 700; border-radius: 8px;
+    }
+
+    h2 { margin: 40px 0 16px; }
+
+    /* ===== Creador de equipos (solo HTML y CSS) ===== */
+    .equipo { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    .hueco {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      min-height: 150px; padding: 12px; text-align: center;
+      background: var(--panel); border: 2px dashed var(--borde); border-radius: 10px;
+    }
+    .hueco:hover { border-color: var(--acento); }
+    .vacio { display: flex; flex-direction: column; align-items: center; color: var(--suave); }
+    .mas { font-size: 2rem; }
+    .elegido { display: none; flex-direction: column; align-items: center; }
+    .slot:has(input:not([value=""]):checked) .vacio { display: none; }
+    .slot:has(input:not([value=""]):checked) .hueco { border-style: solid; }
+    .acciones { margin-top: 16px; }
+
+    /* Las imágenes se cargan desde la carpeta images (ver reglas .img-... al final) */
+    .img {
+      display: block; width: 80px; height: 80px;
+      background-repeat: no-repeat; background-position: center; background-size: contain;
+    }
+    .img.peq { width: 64px; height: 64px; margin: 0 auto; }
+
+    /* Ventana de selección: se abre con :target */
+    .modal { display: none; position: fixed; inset: 0; z-index: 10; align-items: center; justify-content: center; }
+    .modal:target { display: flex; }
+    .fondo { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.6); }
+    .panel {
+      position: relative; width: min(560px, 92vw); max-height: 80vh; overflow-y: auto;
+      background: var(--panel); border: 1px solid var(--borde); border-radius: 12px; padding: 20px;
+    }
+    .panel h3 { margin-bottom: 12px; font-size: 1.1rem; }
+    .lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+    .opcion {
+      background: var(--fondo); border: 2px solid var(--borde); border-radius: 8px;
+      padding: 8px; text-align: center; cursor: pointer;
+    }
+    .opcion:hover { border-color: var(--suave); }
+    .opcion > span:last-child { display: block; font-size: 0.85rem; }
+    .boton-sec, .listo, .reset {
+      display: inline-block; margin-top: 16px; margin-right: 8px; padding: 8px 14px;
+      border-radius: 8px; cursor: pointer; font: inherit;
+    }
+    .boton-sec, .reset { background: none; border: 1px solid var(--borde); color: var(--suave); }
+    .listo { background: var(--acento); color: #14182b; font-weight: 700; }
+    /* ===== Fin del creador de equipos ===== */
+
+    .tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .tarjeta { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px; padding: 20px; }
+    .tarjeta h3 { margin-bottom: 8px; }
+    .tarjeta p { color: var(--suave); }
+
+    .video {
+      position: relative; width: 100%; aspect-ratio: 16 / 9;
+      border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; background: #000;
+    }
+    .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+    footer { text-align: center; color: var(--suave); padding: 32px; font-size: 0.85rem; }
+
+    /* ===== TUS POKÉMON =====
+       Para cada Pokémon: la imagen (carpeta images), mostrarlo en el hueco y resaltarlo en la lista.
+       Si cambias un nombre de archivo, solo hay que editar la línea "background-image". */
+    .img-rillaboom { background-image: url("images/Rillaboom.png"); }
+    .slot:has([value="rillaboom"]:checked) .p-rillaboom { display: flex; }
+    .slot:has([value="rillaboom"]:checked) .o-rillaboom { border-color: var(--acento); }
+
+    .img-sneasler { background-image: url("images/Sneasler.png"); }
+    .slot:has([value="sneasler"]:checked) .p-sneasler { display: flex; }
+    .slot:has([value="sneasler"]:checked) .o-sneasler { border-color: var(--acento); }
+
+    .img-incineroar { background-image: url("images/Incineroar.png"); }
+    .slot:has([value="incineroar"]:checked) .p-incineroar { display: flex; }
+    .slot:has([value="incineroar"]:checked) .o-incineroar { border-color: var(--acento); }
+
+    .img-golisopood { background-image: url("images/Golisopood.png"); }
+    .slot:has([value="golisopood"]:checked) .p-golisopood { display: flex; }
+    .slot:has([value="golisopood"]:checked) .o-golisopood { border-color: var(--acento); }
+
+    .img-salamance { background-image: url("images/Salamance.png"); }
+    .slot:has([value="salamance"]:checked) .p-salamance { display: flex; }
+    .slot:has([value="salamance"]:checked) .o-salamance { border-color: var(--acento); }
+
+    .img-indeedee-f { background-image: url("images/Indeedee-F.png"); }
+    .slot:has([value="indeedee-f"]:checked) .p-indeedee-f { display: flex; }
+    .slot:has([value="indeedee-f"]:checked) .o-indeedee-f { border-color: var(--acento); }
+
+    .img-kingambit { background-image: url("images/Kingambit.png"); }
+    .slot:has([value="kingambit"]:checked) .p-kingambit { display: flex; }
+    .slot:has([value="kingambit"]:checked) .o-kingambit { border-color: var(--acento); }
+
+    .img-farigiraf { background-image: url("images/Farigiraf.png"); }
+    .slot:has([value="farigiraf"]:checked) .p-farigiraf { display: flex; }
+    .slot:has([value="farigiraf"]:checked) .o-farigiraf { border-color: var(--acento); }
+
+    .img-basculegion { background-image: url("images/Basculegion.png"); }
+    .slot:has([value="basculegion"]:checked) .p-basculegion { display: flex; }
+    .slot:has([value="basculegion"]:checked) .o-basculegion { border-color: var(--acento); }
+
+    .img-garchomp { background-image: url("images/Garchomp.png"); }
+    .slot:has([value="garchomp"]:checked) .p-garchomp { display: flex; }
+    .slot:has([value="garchomp"]:checked) .o-garchomp { border-color: var(--acento); }
+
+    .img-charizard { background-image: url("images/Charizard.png"); }
+    .slot:has([value="charizard"]:checked) .p-charizard { display: flex; }
+    .slot:has([value="charizard"]:checked) .o-charizard { border-color: var(--acento); }
+
+    .img-gholdengo { background-image: url("images/Gholdengo.png"); }
+    .slot:has([value="gholdengo"]:checked) .p-gholdengo { display: flex; }
+    .slot:has([value="gholdengo"]:checked) .o-gholdengo { border-color: var(--acento); }
+
+    .img-archaludon { background-image: url("images/Archaludon.png"); }
+    .slot:has([value="archaludon"]:checked) .p-archaludon { display: flex; }
+    .slot:has([value="archaludon"]:checked) .o-archaludon { border-color: var(--acento); }
+
+    .img-pelipper { background-image: url("images/Pelipper.png"); }
+    .slot:has([value="pelipper"]:checked) .p-pelipper { display: flex; }
+    .slot:has([value="pelipper"]:checked) .o-pelipper { border-color: var(--acento); }
+
+    .img-whimsicott { background-image: url("images/Whimsicott.png"); }
+    .slot:has([value="whimsicott"]:checked) .p-whimsicott { display: flex; }
+    .slot:has([value="whimsicott"]:checked) .o-whimsicott { border-color: var(--acento); }
+
+    .img-milotic { background-image: url("images/Milotic.png"); }
+    .slot:has([value="milotic"]:checked) .p-milotic { display: flex; }
+    .slot:has([value="milotic"]:checked) .o-milotic { border-color: var(--acento); }
+
+    .img-raichu { background-image: url("images/Raichu.png"); }
+    .slot:has([value="raichu"]:checked) .p-raichu { display: flex; }
+    .slot:has([value="raichu"]:checked) .o-raichu { border-color: var(--acento); }
+
+    .img-sylveon { background-image: url("images/Sylveon.png"); }
+    .slot:has([value="sylveon"]:checked) .p-sylveon { display: flex; }
+    .slot:has([value="sylveon"]:checked) .o-sylveon { border-color: var(--acento); }
+
+    .img-politoed { background-image: url("images/Politoed.png"); }
+    .slot:has([value="politoed"]:checked) .p-politoed { display: flex; }
+    .slot:has([value="politoed"]:checked) .o-politoed { border-color: var(--acento); }
+
+    .img-arcanine-hisui { background-image: url("images/Arcanine-Hisui.png"); }
+    .slot:has([value="arcanine-hisui"]:checked) .p-arcanine-hisui { display: flex; }
+    .slot:has([value="arcanine-hisui"]:checked) .o-arcanine-hisui { border-color: var(--acento); }
+
+  </style>
+</head>
+<body>
+  <header>
+    <a class="logo" href="#">VGC Hub</a>
+    <nav>
+      <a href="#equipos">Equipos</a>
+      <a href="https://www.pokemon.com/es/noticias/preparate-para-el-reglamento-m-c-de-pokemon-champions" target="_blank" rel="noopener noreferrer">Guías</a>
+      <a href="https://nerd-of-now.github.io/NCP-VGC-Damage-Calculator/" target="_blank" rel="noopener noreferrer">Cálculo de daño</a>
+      <a href="https://vgcdata-speed-tiers.pages.dev/?reg=m-c" target="_blank" rel="noopener noreferrer">Control de velocidad</a>
+      <a href="#torneos">Torneos</a>
+      <a href="#campeon">Campeón regional</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Construye tu equipo para el circuito VGC</h1>
+      <p>Equipos, estrategias y guías para combates dobles competitivos de Pokémon.</p>
+      <a class="boton" href="https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw/edit?gid=736919171#gid=736919171" target="_blank" rel="noopener noreferrer">Ver equipos</a>
+    </section>
+
+    <section id="equipos">
+      <h2>Crea tu equipo</h2>
+      <form>
+        <div class="equipo">
+      <div class="slot">
+        <input type="radio" name="h1" value="" checked hidden>
+        <input type="radio" name="h1" id="h1-rillaboom" value="rillaboom" hidden>
+        <input type="radio" name="h1" id="h1-sneasler" value="sneasler" hidden>
+        <input type="radio" name="h1" id="h1-incineroar" value="incineroar" hidden>
+        <input type="radio" name="h1" id="h1-golisopood" value="golisopood" hidden>
+        <input type="radio" name="h1" id="h1-salamance" value="salamance" hidden>
+        <input type="radio" name="h1" id="h1-indeedee-f" value="indeedee-f" hidden>
+        <input type="radio" name="h1" id="h1-kingambit" value="kingambit" hidden>
+        <input type="radio" name="h1" id="h1-farigiraf" value="farigiraf" hidden>
+        <input type="radio" name="h1" id="h1-basculegion" value="basculegion" hidden>
+        <input type="radio" name="h1" id="h1-garchomp" value="garchomp" hidden>
+        <input type="radio" name="h1" id="h1-charizard" value="charizard" hidden>
+        <input type="radio" name="h1" id="h1-gholdengo" value="gholdengo" hidden>
+        <input type="radio" name="h1" id="h1-archaludon" value="archaludon" hidden>
+        <input type="radio" name="h1" id="h1-pelipper" value="pelipper" hidden>
+        <input type="radio" name="h1" id="h1-whimsicott" value="whimsicott" hidden>
+        <input type="radio" name="h1" id="h1-milotic" value="milotic" hidden>
+        <input type="radio" name="h1" id="h1-raichu" value="raichu" hidden>
+        <input type="radio" name="h1" id="h1-sylveon" value="sylveon" hidden>
+        <input type="radio" name="h1" id="h1-politoed" value="politoed" hidden>
+        <input type="radio" name="h1" id="h1-arcanine-hisui" value="arcanine-hisui" hidden>
+        <a class="hueco" href="#m1">
+          <span class="vacio"><span class="mas">+</span><small>Añadir Pokémon</small></span>
+          <span class="elegido p-rillaboom"><span class="img img-rillaboom" role="img" aria-label="Rillaboom"></span><strong>Rillaboom</strong></span>
+          <span class="elegido p-sneasler"><span class="img img-sneasler" role="img" aria-label="Sneasler"></span><strong>Sneasler</strong></span>
+          <span class="elegido p-incineroar"><span class="img img-incineroar" role="img" aria-label="Incineroar"></span><strong>Incineroar</strong></span>
+          <span class="elegido p-golisopood"><span class="img img-golisopood" role="img" aria-label="Golisopod"></span><strong>Golisopod</strong></span>
+          <span class="elegido p-salamance"><span class="img img-salamance" role="img" aria-label="Salamence"></span><strong>Salamence</strong></span>
+          <span class="elegido p-indeedee-f"><span class="img img-indeedee-f" role="img" aria-label="Indeedee-F"></span><strong>Indeedee-F</strong></span>
+          <span class="elegido p-kingambit"><span class="img img-kingambit" role="img" aria-label="Kingambit"></span><strong>Kingambit</strong></span>
+          <span class="elegido p-farigiraf"><span class="img img-farigiraf" role="img" aria-label="Farigiraf"></span><strong>Farigiraf</strong></span>
+          <span class="elegido p-basculegion"><span class="img img-basculegion" role="img" aria-label="Basculegion"></span><strong>Basculegion</strong></span>
+          <span class="elegido p-garchomp"><span class="img img-garchomp" role="img" aria-label="Garchomp"></span><strong>Garchomp</strong></span>
+          <span class="elegido p-charizard"><span class="img img-charizard" role="img" aria-label="Charizard"></span><strong>Charizard</strong></span>
+          <span class="elegido p-gholdengo"><span class="img img-gholdengo" role="img" aria-label="Gholdengo"></span><strong>Gholdengo</strong></span>
+          <span class="elegido p-archaludon"><span class="img img-archaludon" role="img" aria-label="Archaludon"></span><strong>Archaludon</strong></span>
+          <span class="elegido p-pelipper"><span class="img img-pelipper" role="img" aria-label="Pelipper"></span><strong>Pelipper</strong></span>
+          <span class="elegido p-whimsicott"><span class="img img-whimsicott" role="img" aria-label="Whimsicott"></span><strong>Whimsicott</strong></span>
+          <span class="elegido p-milotic"><span class="img img-milotic" role="img" aria-label="Milotic"></span><strong>Milotic</strong></span>
+          <span class="elegido p-raichu"><span class="img img-raichu" role="img" aria-label="Raichu"></span><strong>Raichu</strong></span>
+          <span class="elegido p-sylveon"><span class="img img-sylveon" role="img" aria-label="Sylveon"></span><strong>Sylveon</strong></span>
+          <span class="elegido p-politoed"><span class="img img-politoed" role="img" aria-label="Politoed"></span><strong>Politoed</strong></span>
+          <span class="elegido p-arcanine-hisui"><span class="img img-arcanine-hisui" role="img" aria-label="Arcanine-Hisui"></span><strong>Arcanine-Hisui</strong></span>
+        </a>
+        <div class="modal" id="m1">
+          <a class="fondo" href="#equipos" aria-label="Cerrar"></a>
+          <div class="panel">
+            <h3>Elige un Pokémon (hueco 1)</h3>
+            <div class="lista">
+            <label class="opcion o-rillaboom" for="h1-rillaboom"><span class="img img-rillaboom peq" role="img" aria-label="Rillaboom"></span><span>Rillaboom</span></label>
+            <label class="opcion o-sneasler" for="h1-sneasler"><span class="img img-sneasler peq" role="img" aria-label="Sneasler"></span><span>Sneasler</span></label>
+            <label class="opcion o-incineroar" for="h1-incineroar"><span class="img img-incineroar peq" role="img" aria-label="Incineroar"></span><span>Incineroar</span></label>
+            <label class="opcion o-golisopood" for="h1-golisopood"><span class="img img-golisopood peq" role="img" aria-label="Golisopod"></span><span>Golisopod</span></label>
+            <label class="opcion o-salamance" for="h1-salamance"><span class="img img-salamance peq" role="img" aria-label="Salamence"></span><span>Salamence</span></label>
+            <label class="opcion o-indeedee-f" for="h1-indeedee-f"><span class="img img-indeedee-f peq" role="img" aria-label="Indeedee-F"></span><span>Indeedee-F</span></label>
+            <label class="opcion o-kingambit" for="h1-kingambit"><span class="img img-kingambit peq" role="img" aria-label="Kingambit"></span><span>Kingambit</span></label>
+            <label class="opcion o-farigiraf" for="h1-farigiraf"><span class="img img-farigiraf peq" role="img" aria-label="Farigiraf"></span><span>Farigiraf</span></label>
+            <label class="opcion o-basculegion" for="h1-basculegion"><span class="img img-basculegion peq" role="img" aria-label="Basculegion"></span><span>Basculegion</span></label>
+            <label class="opcion o-garchomp" for="h1-garchomp"><span class="img img-garchomp peq" role="img" aria-label="Garchomp"></span><span>Garchomp</span></label>
+            <label class="opcion o-charizard" for="h1-charizard"><span class="img img-charizard peq" role="img" aria-label="Charizard"></span><span>Charizard</span></label>
+            <label class="opcion o-gholdengo" for="h1-gholdengo"><span class="img img-gholdengo peq" role="img" aria-label="Gholdengo"></span><span>Gholdengo</span></label>
+            <label class="opcion o-archaludon" for="h1-archaludon"><span class="img img-archaludon peq" role="img" aria-label="Archaludon"></span><span>Archaludon</span></label>
+            <label class="opcion o-pelipper" for="h1-pelipper"><span class="img img-pelipper peq" role="img" aria-label="Pelipper"></span><span>Pelipper</span></label>
+            <label class="opcion o-whimsicott" for="h1-whimsicott"><span class="img img-whimsicott peq" role="img" aria-label="Whimsicott"></span><span>Whimsicott</span></label>
+            <label class="opcion o-milotic" for="h1-milotic"><span class="img img-milotic peq" role="img" aria-label="Milotic"></span><span>Milotic</span></label>
+            <label class="opcion o-raichu" for="h1-raichu"><span class="img img-raichu peq" role="img" aria-label="Raichu"></span><span>Raichu</span></label>
+            <label class="opcion o-sylveon" for="h1-sylveon"><span class="img img-sylveon peq" role="img" aria-label="Sylveon"></span><span>Sylveon</span></label>
+            <label class="opcion o-politoed" for="h1-politoed"><span class="img img-politoed peq" role="img" aria-label="Politoed"></span><span>Politoed</span></label>
+            <label class="opcion o-arcanine-hisui" for="h1-arcanine-hisui"><span class="img img-arcanine-hisui peq" role="img" aria-label="Arcanine-Hisui"></span><span>Arcanine-Hisui</span></label>
+            </div>
+            <label class="boton-sec"><input type="radio" name="h1" value="" hidden>Vaciar hueco</label>
+            <a class="listo" href="#equipos">Listo</a>
+          </div>
+        </div>
+      </div>
+      <div class="slot">
+        <input type="radio" name="h2" value="" checked hidden>
+        <input type="radio" name="h2" id="h2-rillaboom" value="rillaboom" hidden>
+        <input type="radio" name="h2" id="h2-sneasler" value="sneasler" hidden>
+        <input type="radio" name="h2" id="h2-incineroar" value="incineroar" hidden>
+        <input type="radio" name="h2" id="h2-golisopood" value="golisopood" hidden>
+        <input type="radio" name="h2" id="h2-salamance" value="salamance" hidden>
+        <input type="radio" name="h2" id="h2-indeedee-f" value="indeedee-f" hidden>
+        <input type="radio" name="h2" id="h2-kingambit" value="kingambit" hidden>
+        <input type="radio" name="h2" id="h2-farigiraf" value="farigiraf" hidden>
+        <input type="radio" name="h2" id="h2-basculegion" value="basculegion" hidden>
+        <input type="radio" name="h2" id="h2-garchomp" value="garchomp" hidden>
+        <input type="radio" name="h2" id="h2-charizard" value="charizard" hidden>
+        <input type="radio" name="h2" id="h2-gholdengo" value="gholdengo" hidden>
+        <input type="radio" name="h2" id="h2-archaludon" value="archaludon" hidden>
+        <input type="radio" name="h2" id="h2-pelipper" value="pelipper" hidden>
+        <input type="radio" name="h2" id="h2-whimsicott" value="whimsicott" hidden>
+        <input type="radio" name="h2" id="h2-milotic" value="milotic" hidden>
+        <input type="radio" name="h2" id="h2-raichu" value="raichu" hidden>
+        <input type="radio" name="h2" id="h2-sylveon" value="sylveon" hidden>
+        <input type="radio" name="h2" id="h2-politoed" value="politoed" hidden>
+        <input type="radio" name="h2" id="h2-arcanine-hisui" value="arcanine-hisui" hidden>
+        <a class="hueco" href="#m2">
+          <span class="vacio"><span class="mas">+</span><small>Añadir Pokémon</small></span>
+          <span class="elegido p-rillaboom"><span class="img img-rillaboom" role="img" aria-label="Rillaboom"></span><strong>Rillaboom</strong></span>
+          <span class="elegido p-sneasler"><span class="img img-sneasler" role="img" aria-label="Sneasler"></span><strong>Sneasler</strong></span>
+          <span class="elegido p-incineroar"><span class="img img-incineroar" role="img" aria-label="Incineroar"></span><strong>Incineroar</strong></span>
+          <span class="elegido p-golisopood"><span class="img img-golisopood" role="img" aria-label="Golisopod"></span><strong>Golisopod</strong></span>
+          <span class="elegido p-salamance"><span class="img img-salamance" role="img" aria-label="Salamence"></span><strong>Salamence</strong></span>
+          <span class="elegido p-indeedee-f"><span class="img img-indeedee-f" role="img" aria-label="Indeedee-F"></span><strong>Indeedee-F</strong></span>
+          <span class="elegido p-kingambit"><span class="img img-kingambit" role="img" aria-label="Kingambit"></span><strong>Kingambit</strong></span>
+          <span class="elegido p-farigiraf"><span class="img img-farigiraf" role="img" aria-label="Farigiraf"></span><strong>Farigiraf</strong></span>
+          <span class="elegido p-basculegion"><span class="img img-basculegion" role="img" aria-label="Basculegion"></span><strong>Basculegion</strong></span>
+          <span class="elegido p-garchomp"><span class="img img-garchomp" role="img" aria-label="Garchomp"></span><strong>Garchomp</strong></span>
+          <span class="elegido p-charizard"><span class="img img-charizard" role="img" aria-label="Charizard"></span><strong>Charizard</strong></span>
+          <span class="elegido p-gholdengo"><span class="img img-gholdengo" role="img" aria-label="Gholdengo"></span><strong>Gholdengo</strong></span>
+          <span class="elegido p-archaludon"><span class="img img-archaludon" role="img" aria-label="Archaludon"></span><strong>Archaludon</strong></span>
+          <span class="elegido p-pelipper"><span class="img img-pelipper" role="img" aria-label="Pelipper"></span><strong>Pelipper</strong></span>
+          <span class="elegido p-whimsicott"><span class="img img-whimsicott" role="img" aria-label="Whimsicott"></span><strong>Whimsicott</strong></span>
+          <span class="elegido p-milotic"><span class="img img-milotic" role="img" aria-label="Milotic"></span><strong>Milotic</strong></span>
+          <span class="elegido p-raichu"><span class="img img-raichu" role="img" aria-label="Raichu"></span><strong>Raichu</strong></span>
+          <span class="elegido p-sylveon"><span class="img img-sylveon" role="img" aria-label="Sylveon"></span><strong>Sylveon</strong></span>
+          <span class="elegido p-politoed"><span class="img img-politoed" role="img" aria-label="Politoed"></span><strong>Politoed</strong></span>
+          <span class="elegido p-arcanine-hisui"><span class="img img-arcanine-hisui" role="img" aria-label="Arcanine-Hisui"></span><strong>Arcanine-Hisui</strong></span>
+        </a>
+        <div class="modal" id="m2">
+          <a class="fondo" href="#equipos" aria-label="Cerrar"></a>
+          <div class="panel">
+            <h3>Elige un Pokémon (hueco 2)</h3>
+            <div class="lista">
+            <label class="opcion o-rillaboom" for="h2-rillaboom"><span class="img img-rillaboom peq" role="img" aria-label="Rillaboom"></span><span>Rillaboom</span></label>
+            <label class="opcion o-sneasler" for="h2-sneasler"><span class="img img-sneasler peq" role="img" aria-label="Sneasler"></span><span>Sneasler</span></label>
+            <label class="opcion o-incineroar" for="h2-incineroar"><span class="img img-incineroar peq" role="img" aria-label="Incineroar"></span><span>Incineroar</span></label>
+            <label class="opcion o-golisopood" for="h2-golisopood"><span class="img img-golisopood peq" role="img" aria-label="Golisopod"></span><span>Golisopod</span></label>
+            <label class="opcion o-salamance" for="h2-salamance"><span class="img img-salamance peq" role="img" aria-label="Salamence"></span><span>Salamence</span></label>
+            <label class="opcion o-indeedee-f" for="h2-indeedee-f"><span class="img img-indeedee-f peq" role="img" aria-label="Indeedee-F"></span><span>Indeedee-F</span></label>
+            <label class="opcion o-kingambit" for="h2-kingambit"><span class="img img-kingambit peq" role="img" aria-label="Kingambit"></span><span>Kingambit</span></label>
+            <label class="opcion o-farigiraf" for="h2-farigiraf"><span class="img img-farigiraf peq" role="img" aria-label="Farigiraf"></span><span>Farigiraf</span></label>
+            <label class="opcion o-basculegion" for="h2-basculegion"><span class="img img-basculegion peq" role="img" aria-label="Basculegion"></span><span>Basculegion</span></label>
+            <label class="opcion o-garchomp" for="h2-garchomp"><span class="img img-garchomp peq" role="img" aria-label="Garchomp"></span><span>Garchomp</span></label>
+            <label class="opcion o-charizard" for="h2-charizard"><span class="img img-charizard peq" role="img" aria-label="Charizard"></span><span>Charizard</span></label>
+            <label class="opcion o-gholdengo" for="h2-gholdengo"><span class="img img-gholdengo peq" role="img" aria-label="Gholdengo"></span><span>Gholdengo</span></label>
+            <label class="opcion o-archaludon" for="h2-archaludon"><span class="img img-archaludon peq" role="img" aria-label="Archaludon"></span><span>Archaludon</span></label>
+            <label class="opcion o-pelipper" for="h2-pelipper"><span class="img img-pelipper peq" role="img" aria-label="Pelipper"></span><span>Pelipper</span></label>
+            <label class="opcion o-whimsicott" for="h2-whimsicott"><span class="img img-whimsicott peq" role="img" aria-label="Whimsicott"></span><span>Whimsicott</span></label>
+            <label class="opcion o-milotic" for="h2-milotic"><span class="img img-milotic peq" role="img" aria-label="Milotic"></span><span>Milotic</span></label>
+            <label class="opcion o-raichu" for="h2-raichu"><span class="img img-raichu peq" role="img" aria-label="Raichu"></span><span>Raichu</span></label>
+            <label class="opcion o-sylveon" for="h2-sylveon"><span class="img img-sylveon peq" role="img" aria-label="Sylveon"></span><span>Sylveon</span></label>
+            <label class="opcion o-politoed" for="h2-politoed"><span class="img img-politoed peq" role="img" aria-label="Politoed"></span><span>Politoed</span></label>
+            <label class="opcion o-arcanine-hisui" for="h2-arcanine-hisui"><span class="img img-arcanine-hisui peq" role="img" aria-label="Arcanine-Hisui"></span><span>Arcanine-Hisui</span></label>
+            </div>
+            <label class="boton-sec"><input type="radio" name="h2" value="" hidden>Vaciar hueco</label>
+            <a class="listo" href="#equipos">Listo</a>
+          </div>
+        </div>
+      </div>
+      <div class="slot">
+        <input type="radio" name="h3" value="" checked hidden>
+        <input type="radio" name="h3" id="h3-rillaboom" value="rillaboom" hidden>
+        <input type="radio" name="h3" id="h3-sneasler" value="sneasler" hidden>
+        <input type="radio" name="h3" id="h3-incineroar" value="incineroar" hidden>
+        <input type="radio" name="h3" id="h3-golisopood" value="golisopood" hidden>
+        <input type="radio" name="h3" id="h3-salamance" value="salamance" hidden>
+        <input type="radio" name="h3" id="h3-indeedee-f" value="indeedee-f" hidden>
+        <input type="radio" name="h3" id="h3-kingambit" value="kingambit" hidden>
+        <input type="radio" name="h3" id="h3-farigiraf" value="farigiraf" hidden>
+        <input type="radio" name="h3" id="h3-basculegion" value="basculegion" hidden>
+        <input type="radio" name="h3" id="h3-garchomp" value="garchomp" hidden>
+        <input type="radio" name="h3" id="h3-charizard" value="charizard" hidden>
+        <input type="radio" name="h3" id="h3-gholdengo" value="gholdengo" hidden>
+        <input type="radio" name="h3" id="h3-archaludon" value="archaludon" hidden>
+        <input type="radio" name="h3" id="h3-pelipper" value="pelipper" hidden>
+        <input type="radio" name="h3" id="h3-whimsicott" value="whimsicott" hidden>
+        <input type="radio" name="h3" id="h3-milotic" value="milotic" hidden>
+        <input type="radio" name="h3" id="h3-raichu" value="raichu" hidden>
+        <input type="radio" name="h3" id="h3-sylveon" value="sylveon" hidden>
+        <input type="radio" name="h3" id="h3-politoed" value="politoed" hidden>
+        <input type="radio" name="h3" id="h3-arcanine-hisui" value="arcanine-hisui" hidden>
+        <a class="hueco" href="#m3">
+          <span class="vacio"><span class="mas">+</span><small>Añadir Pokémon</small></span>
+          <span class="elegido p-rillaboom"><span class="img img-rillaboom" role="img" aria-label="Rillaboom"></span><strong>Rillaboom</strong></span>
+          <span class="elegido p-sneasler"><span class="img img-sneasler" role="img" aria-label="Sneasler"></span><strong>Sneasler</strong></span>
+          <span class="elegido p-incineroar"><span class="img img-incineroar" role="img" aria-label="Incineroar"></span><strong>Incineroar</strong></span>
+          <span class="elegido p-golisopood"><span class="img img-golisopood" role="img" aria-label="Golisopod"></span><strong>Golisopod</strong></span>
+          <span class="elegido p-salamance"><span class="img img-salamance" role="img" aria-label="Salamence"></span><strong>Salamence</strong></span>
+          <span class="elegido p-indeedee-f"><span class="img img-indeedee-f" role="img" aria-label="Indeedee-F"></span><strong>Indeedee-F</strong></span>
+          <span class="elegido p-kingambit"><span class="img img-kingambit" role="img" aria-label="Kingambit"></span><strong>Kingambit</strong></span>
+          <span class="elegido p-farigiraf"><span class="img img-farigiraf" role="img" aria-label="Farigiraf"></span><strong>Farigiraf</strong></span>
+          <span class="elegido p-basculegion"><span class="img img-basculegion" role="img" aria-label="Basculegion"></span><strong>Basculegion</strong></span>
+          <span class="elegido p-garchomp"><span class="img img-garchomp" role="img" aria-label="Garchomp"></span><strong>Garchomp</strong></span>
+          <span class="elegido p-charizard"><span class="img img-charizard" role="img" aria-label="Charizard"></span><strong>Charizard</strong></span>
+          <span class="elegido p-gholdengo"><span class="img img-gholdengo" role="img" aria-label="Gholdengo"></span><strong>Gholdengo</strong></span>
+          <span class="elegido p-archaludon"><span class="img img-archaludon" role="img" aria-label="Archaludon"></span><strong>Archaludon</strong></span>
+          <span class="elegido p-pelipper"><span class="img img-pelipper" role="img" aria-label="Pelipper"></span><strong>Pelipper</strong></span>
+          <span class="elegido p-whimsicott"><span class="img img-whimsicott" role="img" aria-label="Whimsicott"></span><strong>Whimsicott</strong></span>
+          <span class="elegido p-milotic"><span class="img img-milotic" role="img" aria-label="Milotic"></span><strong>Milotic</strong></span>
+          <span class="elegido p-raichu"><span class="img img-raichu" role="img" aria-label="Raichu"></span><strong>Raichu</strong></span>
+          <span class="elegido p-sylveon"><span class="img img-sylveon" role="img" aria-label="Sylveon"></span><strong>Sylveon</strong></span>
+          <span class="elegido p-politoed"><span class="img img-politoed" role="img" aria-label="Politoed"></span><strong>Politoed</strong></span>
+          <span class="elegido p-arcanine-hisui"><span class="img img-arcanine-hisui" role="img" aria-label="Arcanine-Hisui"></span><strong>Arcanine-Hisui</strong></span>
+        </a>
+        <div class="modal" id="m3">
+          <a class="fondo" href="#equipos" aria-label="Cerrar"></a>
+          <div class="panel">
+            <h3>Elige un Pokémon (hueco 3)</h3>
+            <div class="lista">
+            <label class="opcion o-rillaboom" for="h3-rillaboom"><span class="img img-rillaboom peq" role="img" aria-label="Rillaboom"></span><span>Rillaboom</span></label>
+            <label class="opcion o-sneasler" for="h3-sneasler"><span class="img img-sneasler peq" role="img" aria-label="Sneasler"></span><span>Sneasler</span></label>
+            <label class="opcion o-incineroar" for="h3-incineroar"><span class="img img-incineroar peq" role="img" aria-label="Incineroar"></span><span>Incineroar</span></label>
+            <label class="opcion o-golisopood" for="h3-golisopood"><span class="img img-golisopood peq" role="img" aria-label="Golisopod"></span><span>Golisopod</span></label>
+            <label class="opcion o-salamance" for="h3-salamance"><span class="img img-salamance peq" role="img" aria-label="Salamence"></span><span>Salamence</span></label>
+            <label class="opcion o-indeedee-f" for="h3-indeedee-f"><span class="img img-indeedee-f peq" role="img" aria-label="Indeedee-F"></span><span>Indeedee-F</span></label>
+            <label class="opcion o-kingambit" for="h3-kingambit"><span class="img img-kingambit peq" role="img" aria-label="Kingambit"></span><span>Kingambit</span></label>
+            <label class="opcion o-farigiraf" for="h3-farigiraf"><span class="img img-farigiraf peq" role="img" aria-label="Farigiraf"></span><span>Farigiraf</span></label>
+            <label class="opcion o-basculegion" for="h3-basculegion"><span class="img img-basculegion peq" role="img" aria-label="Basculegion"></span><span>Basculegion</span></label>
+            <label class="opcion o-garchomp" for="h3-garchomp"><span class="img img-garchomp peq" role="img" aria-label="Garchomp"></span><span>Garchomp</span></label>
+            <label class="opcion o-charizard" for="h3-charizard"><span class="img img-charizard peq" role="img" aria-label="Charizard"></span><span>Charizard</span></label>
+            <label class="opcion o-gholdengo" for="h3-gholdengo"><span class="img img-gholdengo peq" role="img" aria-label="Gholdengo"></span><span>Gholdengo</span></label>
+            <label class="opcion o-archaludon" for="h3-archaludon"><span class="img img-archaludon peq" role="img" aria-label="Archaludon"></span><span>Archaludon</span></label>
+            <label class="opcion o-pelipper" for="h3-pelipper"><span class="img img-pelipper peq" role="img" aria-label="Pelipper"></span><span>Pelipper</span></label>
+            <label class="opcion o-whimsicott" for="h3-whimsicott"><span class="img img-whimsicott peq" role="img" aria-label="Whimsicott"></span><span>Whimsicott</span></label>
+            <label class="opcion o-milotic" for="h3-milotic"><span class="img img-milotic peq" role="img" aria-label="Milotic"></span><span>Milotic</span></label>
+            <label class="opcion o-raichu" for="h3-raichu"><span class="img img-raichu peq" role="img" aria-label="Raichu"></span><span>Raichu</span></label>
+            <label class="opcion o-sylveon" for="h3-sylveon"><span class="img img-sylveon peq" role="img" aria-label="Sylveon"></span><span>Sylveon</span></label>
+            <label class="opcion o-politoed" for="h3-politoed"><span class="img img-politoed peq" role="img" aria-label="Politoed"></span><span>Politoed</span></label>
+            <label class="opcion o-arcanine-hisui" for="h3-arcanine-hisui"><span class="img img-arcanine-hisui peq" role="img" aria-label="Arcanine-Hisui"></span><span>Arcanine-Hisui</span></label>
+            </div>
+            <label class="boton-sec"><input type="radio" name="h3" value="" hidden>Vaciar hueco</label>
+            <a class="listo" href="#equipos">Listo</a>
+          </div>
+        </div>
+      </div>
+      <div class="slot">
+        <input type="radio" name="h4" value="" checked hidden>
+        <input type="radio" name="h4" id="h4-rillaboom" value="rillaboom" hidden>
+        <input type="radio" name="h4" id="h4-sneasler" value="sneasler" hidden>
+        <input type="radio" name="h4" id="h4-incineroar" value="incineroar" hidden>
+        <input type="radio" name="h4" id="h4-golisopood" value="golisopood" hidden>
+        <input type="radio" name="h4" id="h4-salamance" value="salamance" hidden>
+        <input type="radio" name="h4" id="h4-indeedee-f" value="indeedee-f" hidden>
+        <input type="radio" name="h4" id="h4-kingambit" value="kingambit" hidden>
+        <input type="radio" name="h4" id="h4-farigiraf" value="farigiraf" hidden>
+        <input type="radio" name="h4" id="h4-basculegion" value="basculegion" hidden>
+        <input type="radio" name="h4" id="h4-garchomp" value="garchomp" hidden>
+        <input type="radio" name="h4" id="h4-charizard" value="charizard" hidden>
+        <input type="radio" name="h4" id="h4-gholdengo" value="gholdengo" hidden>
+        <input type="radio" name="h4" id="h4-archaludon" value="archaludon" hidden>
+        <input type="radio" name="h4" id="h4-pelipper" value="pelipper" hidden>
+        <input type="radio" name="h4" id="h4-whimsicott" value="whimsicott" hidden>
+        <input type="radio" name="h4" id="h4-milotic" value="milotic" hidden>
+        <input type="radio" name="h4" id="h4-raichu" value="raichu" hidden>
+        <input type="radio" name="h4" id="h4-sylveon" value="sylveon" hidden>
+        <input type="radio" name="h4" id="h4-politoed" value="politoed" hidden>
+        <input type="radio" name="h4" id="h4-arcanine-hisui" value="arcanine-hisui" hidden>
+        <a class="hueco" href="#m4">
+          <span class="vacio"><span class="mas">+</span><small>Añadir Pokémon</small></span>
+          <span class="elegido p-rillaboom"><span class="img img-rillaboom" role="img" aria-label="Rillaboom"></span><strong>Rillaboom</strong></span>
+          <span class="elegido p-sneasler"><span class="img img-sneasler" role="img" aria-label="Sneasler"></span><strong>Sneasler</strong></span>
+          <span class="elegido p-incineroar"><span class="img img-incineroar" role="img" aria-label="Incineroar"></span><strong>Incineroar</strong></span>
+          <span class="elegido p-golisopood"><span class="img img-golisopood" role="img" aria-label="Golisopod"></span><strong>Golisopod</strong></span>
+          <span class="elegido p-salamance"><span class="img img-salamance" role="img" aria-label="Salamence"></span><strong>Salamence</strong></span>
+          <span class="elegido p-indeedee-f"><span class="img img-indeedee-f" role="img" aria-label="Indeedee-F"></span><strong>Indeedee-F</strong></span>
+          <span class="elegido p-kingambit"><span class="img img-kingambit" role="img" aria-label="Kingambit"></span><strong>Kingambit</strong></span>
+          <span class="elegido p-farigiraf"><span class="img img-farigiraf" role="img" aria-label="Farigiraf"></span><strong>Farigiraf</strong></span>
+          <span class="elegido p-basculegion"><span class="img img-basculegion" role="img" aria-label="Basculegion"></span><strong>Basculegion</strong></span>
+          <span class="elegido p-garchomp"><span class="img img-garchomp" role="img" aria-label="Garchomp"></span><strong>Garchomp</strong></span>
+          <span class="elegido p-charizard"><span class="img img-charizard" role="img" aria-label="Charizard"></span><strong>Charizard</strong></span>
+          <span class="elegido p-gholdengo"><span class="img img-gholdengo" role="img" aria-label="Gholdengo"></span><strong>Gholdengo</strong></span>
+          <span class="elegido p-archaludon"><span class="img img-archaludon" role="img" aria-label="Archaludon"></span><strong>Archaludon</strong></span>
+          <span class="elegido p-pelipper"><span class="img img-pelipper" role="img" aria-label="Pelipper"></span><strong>Pelipper</strong></span>
+          <span class="elegido p-whimsicott"><span class="img img-whimsicott" role="img" aria-label="Whimsicott"></span><strong>Whimsicott</strong></span>
+          <span class="elegido p-milotic"><span class="img img-milotic" role="img" aria-label="Milotic"></span><strong>Milotic</strong></span>
+          <span class="elegido p-raichu"><span class="img img-raichu" role="img" aria-label="Raichu"></span><strong>Raichu</strong></span>
+          <span class="elegido p-sylveon"><span class="img img-sylveon" role="img" aria-label="Sylveon"></span><strong>Sylveon</strong></span>
+          <span class="elegido p-politoed"><span class="img img-politoed" role="img" aria-label="Politoed"></span><strong>Politoed</strong></span>
+          <span class="elegido p-arcanine-hisui"><span class="img img-arcanine-hisui" role="img" aria-label="Arcanine-Hisui"></span><strong>Arcanine-Hisui</strong></span>
+        </a>
+        <div class="modal" id="m4">
+          <a class="fondo" href="#equipos" aria-label="Cerrar"></a>
+          <div class="panel">
+            <h3>Elige un Pokémon (hueco 4)</h3>
+            <div class="lista">
+            <label class="opcion o-rillaboom" for="h4-rillaboom"><span class="img img-rillaboom peq" role="img" aria-label="Rillaboom"></span><span>Rillaboom</span></label>
+            <label class="opcion o-sneasler" for="h4-sneasler"><span class="img img-sneasler peq" role="img" aria-label="Sneasler"></span><span>Sneasler</span></label>
+            <label class="opcion o-incineroar" for="h4-incineroar"><span class="img img-incineroar peq" role="img" aria-label="Incineroar"></span><span>Incineroar</span></label>
+            <label class="opcion o-golisopood" for="h4-golisopood"><span class="img img-golisopood peq" role="img" aria-label="Golisopod"></span><span>Golisopod</span></label>
+            <label class="opcion o-salamance" for="h4-salamance"><span class="img img-salamance peq" role="img" aria-label="Salamence"></span><span>Salamence</span></label>
+            <label class="opcion o-indeedee-f" for="h4-indeedee-f"><span class="img img-indeedee-f peq" role="img" aria-label="Indeedee-F"></span><span>Indeedee-F</span></label>
+            <label class="opcion o-kingambit" for="h4-kingambit"><span class="img img-kingambit peq" role="img" aria-label="Kingambit"></span><span>Kingambit</span></label>
+            <label class="opcion o-farigiraf" for="h4-farigiraf"><span class="img img-farigiraf peq" role="img" aria-label="Farigiraf"></span><span>Farigiraf</span></label>
+            <label class="opcion o-basculegion" for="h4-basculegion"><span class="img img-basculegion peq" role="img" aria-label="Basculegion"></span><span>Basculegion</span></label>
+            <label class="opcion o-garchomp" for="h4-garchomp"><span class="img img-garchomp peq" role="img" aria-label="Garchomp"></span><span>Garchomp</span></label>
+            <label class="opcion o-charizard" for="h4-charizard"><span class="img img-charizard peq" role="img" aria-label="Charizard"></span><span>Charizard</span></label>
+            <label class="opcion o-gholdengo" for="h4-gholdengo"><span class="img img-gholdengo peq" role="img" aria-label="Gholdengo"></span><span>Gholdengo</span></label>
+            <label class="opcion o-archaludon" for="h4-archaludon"><span class="img img-archaludon peq" role="img" aria-label="Archaludon"></span><span>Archaludon</span></label>
+            <label class="opcion o-pelipper" for="h4-pelipper"><span class="img img-pelipper peq" role="img" aria-label="Pelipper"></span><span>Pelipper</span></label>
+            <label class="opcion o-whimsicott" for="h4-whimsicott"><span class="img img-whimsicott peq" role="img" aria-label="Whimsicott"></span><span>Whimsicott</span></label>
+            <label class="opcion o-milotic" for="h4-milotic"><span class="img img-milotic peq" role="img" aria-label="Milotic"></span><span>Milotic</span></label>
+            <label class="opcion o-raichu" for="h4-raichu"><span class="img img-raichu peq" role="img" aria-label="Raichu"></span><span>Raichu</span></label>
+            <label class="opcion o-sylveon" for="h4-sylveon"><span class="img img-sylveon peq" role="img" aria-label="Sylveon"></span><span>Sylveon</span></label>
+            <label class="opcion o-politoed" for="h4-politoed"><span class="img img-politoed peq" role="img" aria-label="Politoed"></span><span>Politoed</span></label>
+            <label class="opcion o-arcanine-hisui" for="h4-arcanine-hisui"><span class="img img-arcanine-hisui peq" role="img" aria-label="Arcanine-Hisui"></span><span>Arcanine-Hisui</span></label>
+            </div>
+            <label class="boton-sec"><input type="radio" name="h4" value="" hidden>Vaciar hueco</label>
+            <a class="listo" href="#equipos">Listo</a>
+          </div>
+        </div>
+      </div>
+      <div class="slot">
+        <input type="radio" name="h5" value="" checked hidden>
+        <input type="radio" name="h5" id="h5-rillaboom" value="rillaboom" hidden>
+        <input type="radio" name="h5" id="h5-sneasler" value="sneasler" hidden>
+        <input type="radio" name="h5" id="h5-incineroar" value="incineroar" hidden>
+        <input type="radio" name="h5" id="h5-golisopood" value="golisopood" hidden>
+        <input type="radio" name="h5" id="h5-salamance" value="salamance" hidden>
+        <input type="radio" name="h5" id="h5-indeedee-f" value="indeedee-f" hidden>
+        <input type="radio" name="h5" id="h5-kingambit" value="kingambit" hidden>
+        <input type="radio" name="h5" id="h5-farigiraf" value="farigiraf" hidden>
+        <input type="radio" name="h5" id="h5-basculegion" value="basculegion" hidden>
+        <input type="radio" name="h5" id="h5-garchomp" value="garchomp" hidden>
+        <input type="radio" name="h5" id="h5-charizard" value="charizard" hidden>
+        <input type="radio" name="h5" id="h5-gholdengo" value="gholdengo" hidden>
+        <input type="radio" name="h5" id="h5-archaludon" value="archaludon" hidden>
+        <input type="radio" name="h5" id="h5-pelipper" value="pelipper" hidden>
+        <input type="radio" name="h5" id="h5-whimsicott" value="whimsicott" hidden>
+        <input type="radio" name="h5" id="h5-milotic" value="milotic" hidden>
+        <input type="radio" name="h5" id="h5-raichu" value="raichu" hidden>
+        <input type="radio" name="h5" id="h5-sylveon" value="sylveon" hidden>
+        <input type="radio" name="h5" id="h5-politoed" value="politoed" hidden>
+        <input type="radio" name="h5" id="h5-arcanine-hisui" value="arcanine-hisui" hidden>
+        <a class="hueco" href="#m5">
+          <span class="vacio"><span class="mas">+</span><small>Añadir Pokémon</small></span>
+          <span class="elegido p-rillaboom"><span class="img img-rillaboom" role="img" aria-label="Rillaboom"></span><strong>Rillaboom</strong></span>
+          <span class="elegido p-sneasler"><span class="img img-sneasler" role="img" aria-label="Sneasler"></span><strong>Sneasler</strong></span>
+          <span class="elegido p-incineroar"><span class="img img-incineroar" role="img" aria-label="Incineroar"></span><strong>Incineroar</strong></span>
+          <span class="elegido p-golisopood"><span class="img img-golisopood" role="img" aria-label="Golisopod"></span><strong>Golisopod</strong></span>
+          <span class="elegido p-salamance"><span class="img img-salamance" role="img" aria-label="Salamence"></span><strong>Salamence</strong></span>
+          <span class="elegido p-indeedee-f"><span class="img img-indeedee-f" role="img" aria-label="Indeedee-F"></span><strong>Indeedee-F</strong></span>
+          <span class="elegido p-kingambit"><span class="img img-kingambit" role="img" aria-label="Kingambit"></span><strong>Kingambit</strong></span>
+          <span class="elegido p-farigiraf"><span class="img img-farigiraf" role="img" aria-label="Farigiraf"></span><strong>Farigiraf</strong></span>
+          <span class="elegido p-basculegion"><span class="img img-basculegion" role="img" aria-label="Basculegion"></span><strong>Basculegion</strong></span>
+          <span class="elegido p-garchomp"><span class="img img-garchomp" role="img" aria-label="Garchomp"></span><strong>Garchomp</strong></span>
+          <span class="elegido p-charizard"><span class="img img-charizard" role="img" aria-label="Charizard"></span><strong>Charizard</strong></span>
+          <span class="elegido p-gholdengo"><span class="img img-gholdengo" role="img" aria-label="Gholdengo"></span><strong>Gholdengo</strong></span>
+          <span class="elegido p-archaludon"><span class="img img-archaludon" role="img" aria-label="Archaludon"></span><strong>Archaludon</strong></span>
+          <span class="elegido p-pelipper"><span class="img img-pelipper" role="img" aria-label="Pelipper"></span><strong>Pelipper</strong></span>
+          <span class="elegido p-whimsicott"><span class="img img-whimsicott" role="img" aria-label="Whimsicott"></span><strong>Whimsicott</strong></span>
+          <span class="elegido p-milotic"><span class="img img-milotic" role="img" aria-label="Milotic"></span><strong>Milotic</strong></span>
+          <span class="elegido p-raichu"><span class="img img-raichu" role="img" aria-label="Raichu"></span><strong>Raichu</strong></span>
+          <span class="elegido p-sylveon"><span class="img img-sylveon" role="img" aria-label="Sylveon"></span><strong>Sylveon</strong></span>
+          <span class="elegido p-politoed"><span class="img img-politoed" role="img" aria-label="Politoed"></span><strong>Politoed</strong></span>
+          <span class="elegido p-arcanine-hisui"><span class="img img-arcanine-hisui" role="img" aria-label="Arcanine-Hisui"></span><strong>Arcanine-Hisui</strong></span>
+        </a>
+        <div class="modal" id="m5">
+          <a class="fondo" href="#equipos" aria-label="Cerrar"></a>
+          <div class="panel">
+            <h3>Elige un Pokémon (hueco 5)</h3>
+            <div class="lista">
+            <label class="opcion o-rillaboom" for="h5-rillaboom"><span class="img img-rillaboom peq" role="img" aria-label="Rillaboom"></span><span>Rillaboom</span></label>
+            <label class="opcion o-sneasler" for="h5-sneasler"><span class="img img-sneasler peq" role="img" aria-label="Sneasler"></span><span>Sneasler</span></label>
+            <label class="opcion o-incineroar" for="h5-incineroar"><span class="img img-incineroar peq" role="img" aria-label="Incineroar"></span><span>Incineroar</span></label>
+            <label class="opcion o-golisopood" for="h5-golisopood"><span class="img img-golisopood peq" role="img" aria-label="Golisopod"></span><span>Golisopod</span></label>
+            <label class="opcion o-salamance" for="h5-salamance"><span class="img img-salamance peq" role="img" aria-label="Salamence"></span><span>Salamence</span></label>
+            <label class="opcion o-indeedee-f" for="h5-indeedee-f"><span class="img img-indeedee-f peq" role="img" aria-label="Indeedee-F"></span><span>Indeedee-F</span></label>
+            <label class="opcion o-kingambit" for="h5-kingambit"><span class="img img-kingambit peq" role="img" aria-label="Kingambit"></span><span>Kingambit</span></label>
+            <label class="opcion o-farigiraf" for="h5-farigiraf"><span class="img img-farigiraf peq" role="img" aria-label="Farigiraf"></span><span>Farigiraf</span></label>
+            <label class="opcion o-basculegion" for="h5-basculegion"><span class="img img-basculegion peq" role="img" aria-label="Basculegion"></span><span>Basculegion</span></label>
+            <label class="opcion o-garchomp" for="h5-garchomp"><span class="img img-garchomp peq" role="img" aria-label="Garchomp"></span><span>Garchomp</span></label>
+            <label class="opcion o-charizard" for="h5-charizard"><span class="img img-charizard peq" role="img" aria-label="Charizard"></span><span>Charizard</span></label>
+            <label class="opcion o-gholdengo" for="h5-gholdengo"><span class="img img-gholdengo peq" role="img" aria-label="Gholdengo"></span><span>Gholdengo</span></label>
+            <label class="opcion o-archaludon" for="h5-archaludon"><span class="img img-archaludon peq" role="img" aria-label="Archaludon"></span><span>Archaludon</span></label>
+            <label class="opcion o-pelipper" for="h5-pelipper"><span class="img img-pelipper peq" role="img" aria-label="Pelipper"></span><span>Pelipper</span></label>
+            <label class="opcion o-whimsicott" for="h5-whimsicott"><span class="img img-whimsicott peq" role="img" aria-label="Whimsicott"></span><span>Whimsicott</span></label>
+            <label class="opcion o-milotic" for="h5-milotic"><span class="img img-milotic peq" role="img" aria-label="Milotic"></span><span>Milotic</span></label>
+            <label class="opcion o-raichu" for="h5-raichu"><span class="img img-raichu peq" role="img" aria-label="Raichu"></span><span>Raichu</span></label>
+            <label class="opcion o-sylveon" for="h5-sylveon"><span class="img img-sylveon peq" role="img" aria-label="Sylveon"></span><span>Sylveon</span></label>
+            <label class="opcion o-politoed" for="h5-politoed"><span class="img img-politoed peq" role="img" aria-label="Politoed"></span><span>Politoed</span></label>
+            <label class="opcion o-arcanine-hisui" for="h5-arcanine-hisui"><span class="img img-arcanine-hisui peq" role="img" aria-label="Arcanine-Hisui"></span><span>Arcanine-Hisui</span></label>
+            </div>
+            <label class="boton-sec"><input type="radio" name="h5" value="" hidden>Vaciar hueco</label>
+            <a class="listo" href="#equipos">Listo</a>
+          </div>
+        </div>
+      </div>
+      <div class="slot">
+        <input type="radio" name="h6" value="" checked hidden>
+        <input type="radio" name="h6" id="h6-rillaboom" value="rillaboom" hidden>
+        <input type="radio" name="h6" id="h6-sneasler" value="sneasler" hidden>
+        <input type="radio" name="h6" id="h6-incineroar" value="incineroar" hidden>
+        <input type="radio" name="h6" id="h6-golisopood" value="golisopood" hidden>
+        <input type="radio" name="h6" id="h6-salamance" value="salamance" hidden>
+        <input type="radio" name="h6" id="h6-indeedee-f" value="indeedee-f" hidden>
+        <input type="radio" name="h6" id="h6-kingambit" value="kingambit" hidden>
+        <input type="radio" name="h6" id="h6-farigiraf" value="farigiraf" hidden>
+        <input type="radio" name="h6" id="h6-basculegion" value="basculegion" hidden>
+        <input type="radio" name="h6" id="h6-garchomp" value="garchomp" hidden>
+        <input type="radio" name="h6" id="h6-charizard" value="charizard" hidden>
+        <input type="radio" name="h6" id="h6-gholdengo" value="gholdengo" hidden>
+        <input type="radio" name="h6" id="h6-archaludon" value="archaludon" hidden>
+        <input type="radio" name="h6" id="h6-pelipper" value="pelipper" hidden>
+        <input type="radio" name="h6" id="h6-whimsicott" value="whimsicott" hidden>
+        <input type="radio" name="h6" id="h6-milotic" value="milotic" hidden>
+        <input type="radio" name="h6" id="h6-raichu" value="raichu" hidden>
+        <input type="radio" name="h6" id="h6-sylveon" value="sylveon" hidden>
+        <input type="radio" name="h6" id="h6-politoed" value="politoed" hidden>
+        <input type="radio" name="h6" id="h6-arcanine-hisui" value="arcanine-hisui" hidden>
+        <a class="hueco" href="#m6">
+          <span class="vacio"><span class="mas">+</span><small>Añadir Pokémon</small></span>
+          <span class="elegido p-rillaboom"><span class="img img-rillaboom" role="img" aria-label="Rillaboom"></span><strong>Rillaboom</strong></span>
+          <span class="elegido p-sneasler"><span class="img img-sneasler" role="img" aria-label="Sneasler"></span><strong>Sneasler</strong></span>
+          <span class="elegido p-incineroar"><span class="img img-incineroar" role="img" aria-label="Incineroar"></span><strong>Incineroar</strong></span>
+          <span class="elegido p-golisopood"><span class="img img-golisopood" role="img" aria-label="Golisopod"></span><strong>Golisopod</strong></span>
+          <span class="elegido p-salamance"><span class="img img-salamance" role="img" aria-label="Salamence"></span><strong>Salamence</strong></span>
+          <span class="elegido p-indeedee-f"><span class="img img-indeedee-f" role="img" aria-label="Indeedee-F"></span><strong>Indeedee-F</strong></span>
+          <span class="elegido p-kingambit"><span class="img img-kingambit" role="img" aria-label="Kingambit"></span><strong>Kingambit</strong></span>
+          <span class="elegido p-farigiraf"><span class="img img-farigiraf" role="img" aria-label="Farigiraf"></span><strong>Farigiraf</strong></span>
+          <span class="elegido p-basculegion"><span class="img img-basculegion" role="img" aria-label="Basculegion"></span><strong>Basculegion</strong></span>
+          <span class="elegido p-garchomp"><span class="img img-garchomp" role="img" aria-label="Garchomp"></span><strong>Garchomp</strong></span>
+          <span class="elegido p-charizard"><span class="img img-charizard" role="img" aria-label="Charizard"></span><strong>Charizard</strong></span>
+          <span class="elegido p-gholdengo"><span class="img img-gholdengo" role="img" aria-label="Gholdengo"></span><strong>Gholdengo</strong></span>
+          <span class="elegido p-archaludon"><span class="img img-archaludon" role="img" aria-label="Archaludon"></span><strong>Archaludon</strong></span>
+          <span class="elegido p-pelipper"><span class="img img-pelipper" role="img" aria-label="Pelipper"></span><strong>Pelipper</strong></span>
+          <span class="elegido p-whimsicott"><span class="img img-whimsicott" role="img" aria-label="Whimsicott"></span><strong>Whimsicott</strong></span>
+          <span class="elegido p-milotic"><span class="img img-milotic" role="img" aria-label="Milotic"></span><strong>Milotic</strong></span>
+          <span class="elegido p-raichu"><span class="img img-raichu" role="img" aria-label="Raichu"></span><strong>Raichu</strong></span>
+          <span class="elegido p-sylveon"><span class="img img-sylveon" role="img" aria-label="Sylveon"></span><strong>Sylveon</strong></span>
+          <span class="elegido p-politoed"><span class="img img-politoed" role="img" aria-label="Politoed"></span><strong>Politoed</strong></span>
+          <span class="elegido p-arcanine-hisui"><span class="img img-arcanine-hisui" role="img" aria-label="Arcanine-Hisui"></span><strong>Arcanine-Hisui</strong></span>
+        </a>
+        <div class="modal" id="m6">
+          <a class="fondo" href="#equipos" aria-label="Cerrar"></a>
+          <div class="panel">
+            <h3>Elige un Pokémon (hueco 6)</h3>
+            <div class="lista">
+            <label class="opcion o-rillaboom" for="h6-rillaboom"><span class="img img-rillaboom peq" role="img" aria-label="Rillaboom"></span><span>Rillaboom</span></label>
+            <label class="opcion o-sneasler" for="h6-sneasler"><span class="img img-sneasler peq" role="img" aria-label="Sneasler"></span><span>Sneasler</span></label>
+            <label class="opcion o-incineroar" for="h6-incineroar"><span class="img img-incineroar peq" role="img" aria-label="Incineroar"></span><span>Incineroar</span></label>
+            <label class="opcion o-golisopood" for="h6-golisopood"><span class="img img-golisopood peq" role="img" aria-label="Golisopod"></span><span>Golisopod</span></label>
+            <label class="opcion o-salamance" for="h6-salamance"><span class="img img-salamance peq" role="img" aria-label="Salamence"></span><span>Salamence</span></label>
+            <label class="opcion o-indeedee-f" for="h6-indeedee-f"><span class="img img-indeedee-f peq" role="img" aria-label="Indeedee-F"></span><span>Indeedee-F</span></label>
+            <label class="opcion o-kingambit" for="h6-kingambit"><span class="img img-kingambit peq" role="img" aria-label="Kingambit"></span><span>Kingambit</span></label>
+            <label class="opcion o-farigiraf" for="h6-farigiraf"><span class="img img-farigiraf peq" role="img" aria-label="Farigiraf"></span><span>Farigiraf</span></label>
+            <label class="opcion o-basculegion" for="h6-basculegion"><span class="img img-basculegion peq" role="img" aria-label="Basculegion"></span><span>Basculegion</span></label>
+            <label class="opcion o-garchomp" for="h6-garchomp"><span class="img img-garchomp peq" role="img" aria-label="Garchomp"></span><span>Garchomp</span></label>
+            <label class="opcion o-charizard" for="h6-charizard"><span class="img img-charizard peq" role="img" aria-label="Charizard"></span><span>Charizard</span></label>
+            <label class="opcion o-gholdengo" for="h6-gholdengo"><span class="img img-gholdengo peq" role="img" aria-label="Gholdengo"></span><span>Gholdengo</span></label>
+            <label class="opcion o-archaludon" for="h6-archaludon"><span class="img img-archaludon peq" role="img" aria-label="Archaludon"></span><span>Archaludon</span></label>
+            <label class="opcion o-pelipper" for="h6-pelipper"><span class="img img-pelipper peq" role="img" aria-label="Pelipper"></span><span>Pelipper</span></label>
+            <label class="opcion o-whimsicott" for="h6-whimsicott"><span class="img img-whimsicott peq" role="img" aria-label="Whimsicott"></span><span>Whimsicott</span></label>
+            <label class="opcion o-milotic" for="h6-milotic"><span class="img img-milotic peq" role="img" aria-label="Milotic"></span><span>Milotic</span></label>
+            <label class="opcion o-raichu" for="h6-raichu"><span class="img img-raichu peq" role="img" aria-label="Raichu"></span><span>Raichu</span></label>
+            <label class="opcion o-sylveon" for="h6-sylveon"><span class="img img-sylveon peq" role="img" aria-label="Sylveon"></span><span>Sylveon</span></label>
+            <label class="opcion o-politoed" for="h6-politoed"><span class="img img-politoed peq" role="img" aria-label="Politoed"></span><span>Politoed</span></label>
+            <label class="opcion o-arcanine-hisui" for="h6-arcanine-hisui"><span class="img img-arcanine-hisui peq" role="img" aria-label="Arcanine-Hisui"></span><span>Arcanine-Hisui</span></label>
+            </div>
+            <label class="boton-sec"><input type="radio" name="h6" value="" hidden>Vaciar hueco</label>
+            <a class="listo" href="#equipos">Listo</a>
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="acciones">
+          <button type="reset" class="reset">Vaciar equipo</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="guias">
+      <h2>Guías</h2>
+      <p style="color: var(--suave);">Consulta las novedades del nuevo reglamento M-C de Pokémon Champions.</p>
+      <a class="boton" href="https://www.pokemon.com/es/noticias/preparate-para-el-reglamento-m-c-de-pokemon-champions" target="_blank" rel="noopener noreferrer">Ver guía</a>
+    </section>
+
+    <section id="dano">
+      <h2>Cálculo de daño</h2>
+      <p style="color: var(--suave);">Mide lo que aguanta y lo que pega tu equipo con la calculadora de daño VGC.</p>
+      <a class="boton" href="https://nerd-of-now.github.io/NCP-VGC-Damage-Calculator/" target="_blank" rel="noopener noreferrer">Abrir calculadora</a>
+    </section>
+
+    <section id="velocidad">
+      <h2>Control de velocidad</h2>
+      <p style="color: var(--suave);">Consulta las tablas de velocidad (speed tiers) del reglamento M-C.</p>
+      <a class="boton" href="https://vgcdata-speed-tiers.pages.dev/?reg=m-c" target="_blank" rel="noopener noreferrer">Ver velocidades</a>
+    </section>
+
+    <section id="torneos">
+      <h2>Torneos</h2>
+      <p style="color: var(--suave); margin-bottom: 16px;">Aquí puedes buscar los torneos y resultados.</p>
+      <a class="boton" href="https://www.pokemon.com/es/play-pokemon" target="_blank" rel="noopener noreferrer">Ver torneos</a>
+    </section>
+
+    <section id="campeon">
+      <h2>Último campeón regional</h2>
+      <p style="color: var(--suave); margin-bottom: 16px;">El último campeón regional explica su equipo.</p>
+      <div class="video">
+        <iframe src="https://www.youtube.com/embed/rRkGqzzhdvQ" title="El último campeón regional explica su equipo" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+    </section>
+  </main>
+
+  <footer>Proyecto de fans, no afiliado a Nintendo, Game Freak ni The Pokémon Company.</footer>
+</body>
+</html>
